@@ -2,3 +2,4 @@ token.json
 .env
 lib
 .DS_Store
+bin
