@@ -1,28 +1,49 @@
-import openai
-import os
-from dotenv import load_dotenv
-import httpx
+import nltk
+from nltk.corpus import stopwords
+from nltk.tokenize import word_tokenize
+from nltk.stem import WordNetLemmatizer
+from sklearn.feature_extraction.text import TfidfVectorizer
+import string
 
-# Carica le variabili di ambiente dal file .env
-load_dotenv()
+# Inizializza gli strumenti di NLTK
+stop_words = set(stopwords.words('english'))
+lemmatizer = WordNetLemmatizer()
 
-def generate_keywords(description):
-    print(description)
+def preprocess_text(text):
+    # Tokenizza il testo
+    words = word_tokenize(text.lower())
+    
+    # Rimuove le stop words e punteggiatura, e lemmatizza le parole
+    filtered_words = [
+        lemmatizer.lemmatize(word) for word in words
+        if word not in stop_words and word not in string.punctuation
+    ]
+    
+    return ' '.join(filtered_words)
 
-    openai.api_key = os.getenv("OPENAI_API_KEY")
+def generate_keywords(title):
+    preprocessed_text = preprocess_text(title)
+    
+    if not preprocessed_text:
+        return []  # Se il testo preprocessato è vuoto, ritorna una lista vuota
+    
+    # Calcola TF-IDF
+    vectorizer = TfidfVectorizer()
+    tfidf_matrix = vectorizer.fit_transform([preprocessed_text])
+    
+    # Identifica le parole chiave per il titolo
+    feature_names = vectorizer.get_feature_names_out()
+    tfidf_scores = tfidf_matrix[0]
+    sorted_indices = tfidf_scores.toarray().flatten().argsort()[::-1]
+    
+    # Prendi le prime 5 parole chiave
+    top_keywords = [feature_names[idx] for idx in sorted_indices[:5]]
+    
+    return top_keywords
 
-    if not openai.api_key:
-        raise ValueError("L'API key di OpenAI non è stata trovata. Assicurati che il file .env contenga OPENAI_API_KEY.")
-
-    response = openai.chat.completions.create(
-        model="gpt-3.5-turbo",
-        messages=[
-            {"role": "system", "content": "Sei un assistente che genera keywords."},
-            {"role": "user", "content": f"Genera delle keywords per la seguente descrizione: {description}"}
-        ]
-    )
-
-    print("Response: " + description)
-
-    keywords = response.choices[0].message
-    return keywords
+def generate_keywords_for_titles(titles):
+    keywords_list = []
+    for title in titles:
+        keywords = generate_keywords(title)
+        keywords_list.append(keywords)
+    return keywords_list

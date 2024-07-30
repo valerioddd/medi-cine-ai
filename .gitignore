@@ -3,3 +3,6 @@ token.json
 lib
 .DS_Store
 bin
+src/__pycache__/
+data.json
+src/__pycache__/
